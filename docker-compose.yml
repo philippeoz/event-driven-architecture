@@ -1,0 +1,105 @@
+version: '2'
+
+services:
+
+  appointment:
+    build: .
+    command: python appointment/run.py
+    depends_on:
+      - mongo
+      - kafka
+    ports:
+      - 8080:8080
+    restart: always
+    environment:
+      DB_NAME: clinic
+      DB_URL: mongodb://clinic:pamonha123@mongo:27017/clinic?retryWrites=true&w=majority&authSource=admin
+      ORIGINS: 'http://0.0.0.0:8081|http://0.0.0.0:8080'
+      KAFKA_URI: kafka:29092
+      KAFKA_TOPIC: appointment_done
+
+  financial:
+    build: .
+    command: python financial/run.py
+    depends_on:
+      - mongo
+    ports:
+      - 8081:8081
+    restart: always
+    environment:
+      DB_NAME: clinic
+      DB_URL: mongodb://clinic:pamonha123@mongo:27017/clinic?retryWrites=true&w=majority&authSource=admin
+      ORIGINS: 'http://0.0.0.0:8081|http://0.0.0.0:8080'
+      KAFKA_URI: kafka:29092
+      KAFKA_TOPIC: appointment_done
+
+  financial-consumer:
+    build: .
+    command: python financial/consumer.py
+    depends_on:
+      - kafka
+    environment:
+      DB_NAME: clinic
+      DB_URL: mongodb://clinic:pamonha123@mongo:27017/clinic?retryWrites=true&w=majority&authSource=admin
+      ORIGINS: 'http://0.0.0.0:8081|http://0.0.0.0:8080'
+      KAFKA_URI: kafka:29092
+      KAFKA_TOPIC: appointment_done
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    restart: always
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_ADVERTISED_HOST_NAME: kafka:9092
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    depends_on:
+      - kafka
+    ports:
+      - 19000:9000
+    restart: always
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+
+  mongo:
+    image: mongo
+    environment:
+      - MONGO_INITDB_DATABASE=clinic
+      - MONGO_INITDB_ROOT_USERNAME=clinic
+      - MONGO_INITDB_ROOT_PASSWORD=pamonha123
+    volumes:
+      - mongodata:/data/db
+    ports:
+      - "27017-27019:27017-27019"
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:8000"
+    volumes:
+      - ./gateway/nginx:/etc/nginx/conf.d
+    depends_on:
+      - appointment
+      - financial
+    restart: always
+
+volumes:
+  mongodata:
