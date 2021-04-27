@@ -11,6 +11,8 @@ A aplicação consistem em dois microserviços:
 
 Sempre que uma consulta é finalizada, um evento é lançado e uma cobrança é gerada a partir daquele evento.
 
+Como as dependencias dos microserviços são basicamente as mesmas, optei por fazer um único build para os dois.
+
 Durante o desenvolvimento foram utilizadas as seguintes tecnologias:
  - [Python 3.7](https://www.python.org/downloads/release/python-379/)
    - [FastAPI](https://fastapi.tiangolo.com/)
@@ -57,6 +59,8 @@ Acessando `"/docs"` você tem acesso ao [Swagger](https://swagger.io/), onde voc
 Acessando `"/redoc"` você tem acesso ao [ReDoc](https://github.com/Redocly/redoc).
 
 Você também pode monitorar os eventos utilizando o Kafdrop que estará rodando em http://localhost:19000.
+
+Também foi adicionado um [Nginx](https://www.nginx.com/) com o intuito de ser um "API Gateway", ad requisições enviadas para http://localhost/appointment/ e para http://localhost/financial/ são redirecionadas para os devidos serviços.
 
 
 ## Routes
